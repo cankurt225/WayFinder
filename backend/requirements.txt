@@ -7,5 +7,5 @@ numpy>=1.24
 # Production icin Redis channel layer:
 # channels-redis>=4.1
 
-# YOLO modeli icin (kendiniz ekleyeceksiniz):
-# ultralytics>=8.0
+# YOLO modeli icin (gecici olarak YOLOv8, sonradan YOLOv26 Nano olacak):
+ultralytics>=8.0

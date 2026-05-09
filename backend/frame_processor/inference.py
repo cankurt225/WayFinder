@@ -1,28 +1,45 @@
 """
 frame_processor.inference
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
-YOLO obje tanima modeli placeholder'i.
-
-Bu dosyadaki `run_yolo_inference` fonksiyonunu kendi YOLO
-implementasyonunuzla degistirin. Mevcut hali temsili (dummy)
-sonuclar uretir.
+YOLO obje tanima modeli entegrasyonu.
 """
 
 import logging
 import time
 from typing import Any
-
 import numpy as np
 
+try:
+    from ultralytics import YOLO
+except ImportError:
+    YOLO = None
+
 logger = logging.getLogger("frame_processor")
+
+# -------------------------------------------------------------------------
+# MODEL YUKLEME ALANI
+# -------------------------------------------------------------------------
+# GECICI MODEL: Su anda YOLOv8 Nano kullaniliyor.
+# ILERIDE DEGISIKLIK: "yolov8n.pt" yerine "yolov26n.pt" veya kendi ozel
+# egitilmis modelinizin yolunu buraya yazacaksiniz.
+MODEL_PATH = "yolov8n.pt" 
+
+global_model = None
+
+def get_model():
+    """Modeli sadece ilk cagrildiginda bellege yukler (Singleton)."""
+    global global_model
+    if global_model is None:
+        if YOLO is None:
+            raise ImportError("ultralytics paketi yuklu degil. Lutfen 'pip install ultralytics' calistirin.")
+        logger.info(f"YOLO modeli yukleniyor: {MODEL_PATH}")
+        global_model = YOLO(MODEL_PATH)
+    return global_model
 
 
 def run_yolo_inference(frame: np.ndarray) -> dict[str, Any]:
     """
     YOLO modeli ile goruntude obje tanima islemi yapar.
-
-    BU FONKSIYON PLACEHOLDER'DIR -- gercek YOLO agirliklarini
-    yukleyip inference yapan implementasyonla degistirilecektir.
 
     Parameters
     ----------
@@ -39,10 +56,10 @@ def run_yolo_inference(frame: np.ndarray) -> dict[str, Any]:
                     "label": str,        # Sinif adi (ornegin "person")
                     "confidence": float,  # 0.0 - 1.0 arasi guven skoru
                     "bbox": {
-                        "x1": int,        # Sol ust kose X
-                        "y1": int,        # Sol ust kose Y
-                        "x2": int,        # Sag alt kose X
-                        "y2": int,        # Sag alt kose Y
+                        "x1": int,
+                        "y1": int,
+                        "x2": int,
+                        "y2": int,
                     }
                 },
                 ...
@@ -52,54 +69,32 @@ def run_yolo_inference(frame: np.ndarray) -> dict[str, Any]:
         }
     """
     start = time.perf_counter()
+    model = get_model()
 
-    h, w = frame.shape[:2]
+    # Inference islemi (verbose=False ile log kirliligini onluyoruz)
+    results = model(frame, verbose=False)
+    
+    detections = []
+    # results genelde tek bir goruntu icin tek bir eleman iceren liste doner
+    for box in results[0].boxes:
+        # box.xyxy formatinda: [x1, y1, x2, y2]
+        x1, y1, x2, y2 = box.xyxy[0].tolist()
+        
+        # Sınıf adı ve güven skoru
+        cls_id = int(box.cls[0].item())
+        conf = float(box.conf[0].item())
+        label = model.names[cls_id]
 
-    # -------------------------------------------------------
-    # TODO: Gercek YOLO inference kodunu buraya ekle.
-    #
-    # Ornek kullanim (Ultralytics YOLOv8):
-    #
-    #   from ultralytics import YOLO
-    #   model = YOLO("yolov8n.pt")          # Modeli bir kez yukle
-    #   results = model(frame, verbose=False)
-    #   detections = []
-    #   for box in results[0].boxes:
-    #       detections.append({
-    #           "label": model.names[int(box.cls)],
-    #           "confidence": round(float(box.conf), 4),
-    #           "bbox": {
-    #               "x1": int(box.xyxy[0][0]),
-    #               "y1": int(box.xyxy[0][1]),
-    #               "x2": int(box.xyxy[0][2]),
-    #               "y2": int(box.xyxy[0][3]),
-    #           }
-    #       })
-    # -------------------------------------------------------
-
-    # Placeholder: temsili dummy sonuc
-    detections = [
-        {
-            "label": "person",
-            "confidence": 0.92,
+        detections.append({
+            "label": label,
+            "confidence": round(conf, 4),
             "bbox": {
-                "x1": int(w * 0.1),
-                "y1": int(h * 0.2),
-                "x2": int(w * 0.4),
-                "y2": int(h * 0.9),
-            },
-        },
-        {
-            "label": "car",
-            "confidence": 0.87,
-            "bbox": {
-                "x1": int(w * 0.5),
-                "y1": int(h * 0.4),
-                "x2": int(w * 0.9),
-                "y2": int(h * 0.8),
-            },
-        },
-    ]
+                "x1": int(x1),
+                "y1": int(y1),
+                "x2": int(x2),
+                "y2": int(y2),
+            }
+        })
 
     elapsed_ms = (time.perf_counter() - start) * 1000
 
