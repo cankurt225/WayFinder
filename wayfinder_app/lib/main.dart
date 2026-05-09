@@ -1,18 +1,76 @@
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:provider/provider.dart';
+import 'package:flutter/services.dart';
+
 import 'screens/camera_screen.dart';
+import 'services/detection_service.dart';
+import 'services/distance_estimator.dart';
+import 'services/voice_guide.dart';
+import 'services/spatial_audio.dart';
+import 'utils/device_profiler.dart';
 
 List<CameraDescription> _cameras = [];
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Lock orientation to portrait
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+  ]);
+
+  // 1. Profile device capabilities
+  await DeviceProfiler.initialize();
+
+  // 2. Create backend services
+  final distanceEstimator = DistanceEstimator();
+  final detectionService = DetectionService(
+    distanceEstimator: distanceEstimator,
+  );
+  final voiceGuide = VoiceGuide();
+  final spatialAudio = SpatialAudio();
+
+  // 3. Initialize async services
+  await Future.wait([
+    detectionService.initialize(),
+    voiceGuide.initialize(),
+    spatialAudio.initialize(),
+  ]);
+
+  // 4. Wire up audio consumers to detection stream
+  voiceGuide.listenTo(detectionService.detections);
+  spatialAudio.listenTo(detectionService.detections);
+
+  // 5. Welcome message
+  await voiceGuide.speakImmediate('WayFinder başlatıldı. Kamerayı açın.');
+
   try {
     _cameras = await availableCameras();
   } catch (e) {
     debugPrint('Kameralar alınamadı: $e');
   }
-  runApp(const MyApp());
+  
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider<DetectionService>(
+          create: (_) => detectionService,
+        ),
+        Provider<VoiceGuide>(
+          create: (_) => voiceGuide,
+          dispose: (_, service) => service.dispose(),
+        ),
+        Provider<SpatialAudio>(
+          create: (_) => spatialAudio,
+          dispose: (_, service) => service.dispose(),
+        ),
+        Provider<DistanceEstimator>.value(value: distanceEstimator),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {

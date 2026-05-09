@@ -1,161 +1,136 @@
-import 'dart:ui' as ui;
+/// Wayfinder — Detection overlay widget.
+///
+/// Draws bounding boxes + labels over the camera preview.
+/// Backend provides [DetectionResult] list, frontend controls visuals.
+///
+/// **Frontend team:** Customize colors, animations, label style.
+library;
+
 import 'package:flutter/material.dart';
-import '../services/yolo_detector.dart';
 
-/// Kamera görüntüsünün üzerine bounding box ve etiketleri çizen widget.
+import '../models/detection_result.dart';
+
 class DetectionOverlay extends StatelessWidget {
-  final List<DetectionResult> detections;
-  final Size previewSize;
-
   const DetectionOverlay({
     super.key,
     required this.detections,
-    required this.previewSize,
   });
+
+  final List<DetectionResult> detections;
 
   @override
   Widget build(BuildContext context) {
     return CustomPaint(
-      painter: _DetectionPainter(
-        detections: detections,
-        previewSize: previewSize,
-      ),
+      painter: _DetectionPainter(detections),
       size: Size.infinite,
     );
   }
 }
 
 class _DetectionPainter extends CustomPainter {
+  _DetectionPainter(this.detections);
+
   final List<DetectionResult> detections;
-  final Size previewSize;
-
-  // Sınıf renklerinin önceden tanımlanmış paleti
-  static const List<Color> _colorPalette = [
-    Color(0xFFFF6B6B), // Kırmızı
-    Color(0xFF4ECDC4), // Teal
-    Color(0xFFFFE66D), // Sarı
-    Color(0xFF95E1D3), // Mint
-    Color(0xFFF38181), // Mercan
-    Color(0xFFAA96DA), // Lavanta
-    Color(0xFFFC5185), // Pembe
-    Color(0xFF3DC1D3), // Cyan
-    Color(0xFFF6D186), // Altın
-    Color(0xFF78E08F), // Yeşil
-    Color(0xFFF8A5C2), // Gül
-    Color(0xFF63CDDA), // Açık Mavi
-    Color(0xFFE77F67), // Turuncu
-    Color(0xFFCF6A87), // Bordo
-    Color(0xFF786FA6), // Mor
-    Color(0xFFF19066), // Şeftali
-    Color(0xFF546DE5), // İndigo
-    Color(0xFFE15F41), // Kırmızı-Turuncu
-    Color(0xFF574B90), // Koyu Mor
-    Color(0xFF3B3B98), // Koyu Mavi
-  ];
-
-  _DetectionPainter({
-    required this.detections,
-    required this.previewSize,
-  });
-
-  Color _getColorForClass(int classIndex) {
-    return _colorPalette[classIndex % _colorPalette.length];
-  }
 
   @override
   void paint(Canvas canvas, Size size) {
-    for (final detection in detections) {
-      final color = _getColorForClass(detection.classIndex);
+    for (final det in detections) {
+      final color = switch (det.dangerLevel) {
+        DangerLevel.danger => Colors.red,
+        DangerLevel.warning => Colors.amber,
+        DangerLevel.safe => const Color(0xFF00E676),
+      };
 
-      // Normalize koordinatları ekran piksellerine dönüştür
-      final double left = detection.x * size.width;
-      final double top = detection.y * size.height;
-      final double right = (detection.x + detection.width) * size.width;
-      final double bottom = (detection.y + detection.height) * size.height;
+      // Scale normalized bbox to canvas size
+      final rect = Rect.fromLTWH(
+        det.boundingBox.left * size.width,
+        det.boundingBox.top * size.height,
+        det.boundingBox.width * size.width,
+        det.boundingBox.height * size.height,
+      );
 
-      final rect = Rect.fromLTRB(left, top, right, bottom);
-
-      // ── Bounding Box ───────────────────────────────────────
+      // Draw bounding box
       final boxPaint = Paint()
         ..color = color
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.5
-        ..strokeCap = StrokeCap.round;
+        ..strokeWidth = 2.5;
+      canvas.drawRect(rect, boxPaint);
 
-      // Köşeleri yuvarlatılmış box
-      final rrect = RRect.fromRectAndRadius(rect, const Radius.circular(4));
-      canvas.drawRRect(rrect, boxPaint);
+      // Draw corner brackets for premium look
+      _drawCornerBrackets(canvas, rect, color);
 
-      // Yarı saydam dolgu
-      final fillPaint = Paint()
-        ..color = color.withOpacity(0.08)
-        ..style = PaintingStyle.fill;
-      canvas.drawRRect(rrect, fillPaint);
-
-      // ── Label Arka Plan + Metin ────────────────────────────
+      // Draw label background
       final labelText =
-          '${detection.label} ${(detection.confidence * 100).toStringAsFixed(0)}%';
+          '${det.label} ${det.distance?.toStringAsFixed(1) ?? "?"}m';
+      final textPainter = TextPainter(
+        text: TextSpan(
+          text: labelText,
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            backgroundColor: color.withAlpha(180),
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
 
-      final textStyle = ui.TextStyle(
-        color: Colors.white,
-        fontSize: 12,
-        fontWeight: FontWeight.w600,
-        letterSpacing: 0.3,
+      // Position label above bbox
+      final labelOffset = Offset(
+        rect.left,
+        (rect.top - textPainter.height - 4).clamp(0, size.height),
       );
 
-      final paragraphBuilder = ui.ParagraphBuilder(
-        ui.ParagraphStyle(
-          textAlign: TextAlign.left,
-          maxLines: 1,
-        ),
-      )
-        ..pushStyle(textStyle)
-        ..addText(labelText);
-
-      final paragraph = paragraphBuilder.build()
-        ..layout(const ui.ParagraphConstraints(width: 300));
-
-      final textWidth = paragraph.longestLine;
-      final textHeight = paragraph.height;
-
-      // Label arka plan kutusu
-      final labelPadH = 6.0;
-      final labelPadV = 3.0;
-      final labelBgRect = RRect.fromRectAndCorners(
+      // Label background
+      canvas.drawRect(
         Rect.fromLTWH(
-          left,
-          top - textHeight - labelPadV * 2,
-          textWidth + labelPadH * 2,
-          textHeight + labelPadV * 2,
+          labelOffset.dx,
+          labelOffset.dy,
+          textPainter.width + 8,
+          textPainter.height + 4,
         ),
-        topLeft: const Radius.circular(4),
-        topRight: const Radius.circular(4),
-        bottomLeft: Radius.zero,
-        bottomRight: Radius.zero,
+        Paint()..color = color.withAlpha(180),
       );
 
-      // Label arkaplanının ekranın üstüne taşmasını önle
-      final adjustedLabelBg = labelBgRect.shift(
-        Offset(0, top - textHeight - labelPadV * 2 < 0 ? textHeight + labelPadV * 2 + rect.height : 0),
+      textPainter.paint(
+        canvas,
+        Offset(labelOffset.dx + 4, labelOffset.dy + 2),
       );
-
-      final labelBgPaint = Paint()
-        ..color = color.withOpacity(0.85)
-        ..style = PaintingStyle.fill;
-
-      canvas.drawRRect(adjustedLabelBg, labelBgPaint);
-
-      // Label metni
-      final textOffset = Offset(
-        adjustedLabelBg.left + labelPadH,
-        adjustedLabelBg.top + labelPadV,
-      );
-      canvas.drawParagraph(paragraph, textOffset);
     }
   }
 
+  void _drawCornerBrackets(Canvas canvas, Rect rect, Color color) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.5
+      ..strokeCap = StrokeCap.round;
+
+    const len = 15.0;
+
+    // Top-left
+    canvas.drawLine(rect.topLeft, Offset(rect.left + len, rect.top), paint);
+    canvas.drawLine(rect.topLeft, Offset(rect.left, rect.top + len), paint);
+
+    // Top-right
+    canvas.drawLine(rect.topRight, Offset(rect.right - len, rect.top), paint);
+    canvas.drawLine(rect.topRight, Offset(rect.right, rect.top + len), paint);
+
+    // Bottom-left
+    canvas.drawLine(
+        rect.bottomLeft, Offset(rect.left + len, rect.bottom), paint);
+    canvas.drawLine(
+        rect.bottomLeft, Offset(rect.left, rect.bottom - len), paint);
+
+    // Bottom-right
+    canvas.drawLine(
+        rect.bottomRight, Offset(rect.right - len, rect.bottom), paint);
+    canvas.drawLine(
+        rect.bottomRight, Offset(rect.right, rect.bottom - len), paint);
+  }
+
   @override
-  bool shouldRepaint(_DetectionPainter oldDelegate) {
+  bool shouldRepaint(covariant _DetectionPainter oldDelegate) {
     return oldDelegate.detections != detections;
   }
 }
