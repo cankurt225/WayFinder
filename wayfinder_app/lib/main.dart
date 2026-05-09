@@ -82,8 +82,11 @@ class MyApp extends StatelessWidget {
       title: 'WayFinder',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: const Color(0xFF0A0A0C), // Softer deep dark
+        primaryColor: const Color(0xFFD4FF00), // Neon yellow/green
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF1E88E5),
+          seedColor: const Color(0xFFD4FF00),
           brightness: Brightness.dark,
         ),
         useMaterial3: true,
@@ -148,11 +151,13 @@ class _MyHomePageState extends State<MyHomePage> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A2E),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: const Color(0xFF16161A),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+            side: const BorderSide(color: Color(0xFF2A2A35), width: 1)),
         title: const Row(
           children: [
-            Icon(Icons.camera_alt, color: Color(0xFF1E88E5)),
+            Icon(Icons.camera_alt, color: Color(0xFFD4FF00)),
             SizedBox(width: 12),
             Text('Kamera İzni', style: TextStyle(color: Colors.white)),
           ],
@@ -168,16 +173,16 @@ class _MyHomePageState extends State<MyHomePage> {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1E88E5),
-              foregroundColor: Colors.white,
+              backgroundColor: const Color(0xFFD4FF00),
+              foregroundColor: Colors.black,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
+                  borderRadius: BorderRadius.circular(12)),
             ),
             onPressed: () {
               Navigator.pop(ctx);
               openAppSettings();
             },
-            child: const Text('Ayarlara Git'),
+            child: const Text('Ayarlara Git', style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -186,16 +191,18 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final Color neonYellow = const Color(0xFFD4FF00);
+
     return Scaffold(
+      backgroundColor: const Color(0xFF0A0A0C),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
             colors: [
-              Color(0xFF0D1B2A),
-              Color(0xFF1A1A2E),
-              Color(0xFF16213E),
+              Color(0xFF1A1A20),
+              Color(0xFF0A0A0C),
             ],
           ),
         ),
@@ -205,32 +212,35 @@ class _MyHomePageState extends State<MyHomePage> {
               // ── AppBar alanı ──────────────────────────────────────
               Padding(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 20, vertical: 16),
+                    horizontal: 20, vertical: 20),
                 child: Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(10),
+                      padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1E88E5).withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(14),
+                        color: Colors.white.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: const Color(0xFF1E88E5).withOpacity(0.3),
+                          color: Colors.white.withOpacity(0.1),
                         ),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.explore_rounded,
-                        color: Color(0xFF1E88E5),
-                        size: 24,
+                        color: neonYellow,
+                        size: 28,
                       ),
                     ),
-                    const SizedBox(width: 14),
-                    const Text(
-                      'WayFinder',
+                    const SizedBox(width: 16),
+                    Text(
+                      'WAYFINDER',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.5,
+                        fontSize: 26,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 3.0,
+                        shadows: [
+                          Shadow(color: neonYellow.withOpacity(0.3), blurRadius: 15),
+                        ],
                       ),
                     ),
                   ],
@@ -245,90 +255,86 @@ class _MyHomePageState extends State<MyHomePage> {
                     children: [
                       // İkon / hero alanı
                       Container(
-                        width: 140,
-                        height: 140,
+                        width: 160,
+                        height: 160,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          gradient: RadialGradient(
-                            colors: [
-                              const Color(0xFF1E88E5).withOpacity(0.25),
-                              const Color(0xFF1E88E5).withOpacity(0.05),
-                            ],
-                          ),
+                          color: const Color(0xFF1E1E24),
                           border: Border.all(
-                            color: const Color(0xFF1E88E5).withOpacity(0.4),
-                            width: 1.5,
+                            color: neonYellow,
+                            width: 3,
                           ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: neonYellow.withOpacity(0.15),
+                              blurRadius: 40,
+                              spreadRadius: 10,
+                            ),
+                          ],
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.camera_alt_rounded,
-                          color: Color(0xFF1E88E5),
-                          size: 60,
+                          color: neonYellow,
+                          size: 70,
                         ),
                       ),
 
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 40),
 
                       const Text(
                         'Çevrenizi Keşfedin',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 26,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.3,
+                          fontSize: 28,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.0,
                         ),
                       ),
 
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 16),
 
                       Text(
-                        'Kamerayı açarak görsel navigasyon\ndeneyimini başlatın.',
+                        'Kamerayı açarak gelişmiş görsel navigasyon\ndeneyimini başlatın.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.55),
-                          fontSize: 15,
-                          height: 1.6,
+                          color: Colors.white.withOpacity(0.6),
+                          fontSize: 16,
+                          height: 1.5,
                         ),
                       ),
 
-                      const SizedBox(height: 48),
+                      const SizedBox(height: 56),
 
                       // ── Kamera Butonu ────────────────────────────────
                       GestureDetector(
                         onTap: _openCamera,
                         child: Container(
-                          width: 220,
-                          height: 56,
+                          width: 260,
+                          height: 64,
                           decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [
-                                Color(0xFF1E88E5),
-                                Color(0xFF1565C0),
-                              ],
-                            ),
-                            borderRadius: BorderRadius.circular(16),
+                            color: neonYellow,
+                            borderRadius: BorderRadius.circular(32),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFF1E88E5)
-                                    .withOpacity(0.45),
-                                blurRadius: 20,
-                                offset: const Offset(0, 6),
+                                color: neonYellow.withOpacity(0.4),
+                                blurRadius: 25,
+                                offset: const Offset(0, 8),
                               ),
                             ],
                           ),
                           child: const Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.camera_alt_rounded,
-                                  color: Colors.white, size: 22),
-                              SizedBox(width: 10),
+                              Icon(Icons.power_settings_new_rounded,
+                                  color: Colors.black, size: 28),
+                              SizedBox(width: 12),
                               Text(
-                                'Kamerayı Aç',
+                                'KAMERAYI AÇ',
                                 style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: 0.3,
+                                  color: Colors.black,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 1.5,
                                 ),
                               ),
                             ],
